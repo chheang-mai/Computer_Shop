@@ -125,11 +125,12 @@ class CartScreen extends StatelessWidget {
                 ),
               ),
 
-              // ✅ Summary + checkout (simple)
+              // Summary + checkout (simple)
               Container(
+                
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
-                  color: Colors.white,
+                  color: Color.fromARGB(255, 216, 213, 213),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
                 ),
                 child: Column(
@@ -147,12 +148,26 @@ class CartScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        // TODO: checkout action
-                       Navigator.push(context, MaterialPageRoute(builder: (context)=>ConfirmOrder()));
-                      },
-                      child: const Text("Checkout"),
+                    SizedBox(
+                      height: 54,
+                      child: ElevatedButton(
+                        
+                        onPressed: () {
+                          // TODO: checkout action
+                         Navigator.push(context, MaterialPageRoute(builder: (context)=>ConfirmOrder()));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          
+                          backgroundColor: Colors.black
+                        ),
+                        
+                        child: const Text("Checkout", 
+                          style: TextStyle(
+                            color: Colors.white,
+                      
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

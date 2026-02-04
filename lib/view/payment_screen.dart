@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key});
@@ -70,8 +71,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
               width: 160,
               child: ElevatedButton(
                 onPressed: () {
-                  // TODO: handle pay now
-                  // print(selectedMethod);
+                  if(selectedMethod == 0 || selectedMethod == 1 ){
+                    showDialog(
+                      context: context,
+                       builder: (context){
+                          return AlertDialog(
+                            title: Text("Scan here"),
+                            backgroundColor: Colors.white,
+                            content: Container(
+                              width: 320,
+                              height: 320,
+                              child: Center(
+                                child: QrImageView(data: "This is simple QR code",
+                                version: QrVersions.auto,
+                                size: 320,
+                                gapless: false,
+                                backgroundColor: Colors.white,
+                                ),
+                                
+                              ),
+                            ),
+                            actions: [
+                              TextButton(onPressed: (){}, child: Text("Done"))
+                            ],
+                          );
+                       });
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE53935),

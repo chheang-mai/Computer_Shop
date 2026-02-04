@@ -5,6 +5,7 @@ import 'package:computer_shop/model/product.dart';
 import 'package:computer_shop/service/api_service.dart';
 import 'package:computer_shop/service/cart_store.dart';
 import 'package:computer_shop/model/cartItem.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,16 +15,43 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _searchCtrl = TextEditingController();
+  final PageController _bannerCtrl = PageController();
+  int _bannerIndex = 0;
+  final Future<List<Product>> _productFuture = ApiService().getProduct();
 
   String _selectedBrand = "All";
-  String _searchText = "";
+
+  @override
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+
+      final next = (_bannerIndex + 1) % _banners.length;
+      _bannerCtrl.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    _timer?.cancel(); // ✅ stop auto slide
+    _bannerCtrl.dispose();
     super.dispose();
   }
+
+  final List<String> _banners = [
+    "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1484788984921-03950022c9ef?auto=format&fit=crop&w=1200&q=80",
+  ];
 
   List<String> _buildBrandCategories(List<Product> products) {
     final brands = products
@@ -41,90 +69,113 @@ class _HomeScreenState extends State<HomeScreen> {
     return (p.brand ?? "").trim().toLowerCase() == _selectedBrand.toLowerCase();
   }
 
-  bool _matchSearch(Product p) {
-    if (_searchText.trim().isEmpty) return true;
-    final q = _searchText.toLowerCase();
-
-    final name = (p.name ?? "").toLowerCase();
-    final brand = (p.brand ?? "").toLowerCase();
-    final cpu = (p.cpu ?? "").toLowerCase();
-    final ram = (p.ram ?? "").toLowerCase();
-    final storage = (p.storage ?? "").toLowerCase();
-    final gpu = (p.gpu ?? "").toLowerCase();
-
-    return name.contains(q) ||
-        brand.contains(q) ||
-        cpu.contains(q) ||
-        ram.contains(q) ||
-        storage.contains(q) ||
-        gpu.contains(q);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text("Computer Shop"),
+        title: const Text(" OG Computer "),
         centerTitle: true,
         actions: [
           IconButton(
-           onPressed: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => CartScreen(),
-    ),
-  );
-},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => CartScreen()),
+              );
+            },
 
             icon: const Icon(Icons.shopping_cart_outlined),
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(64),
+          preferredSize: const Size.fromHeight(170),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                    color: Colors.black.withOpacity(0.06),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                children: [
+                  SizedBox(
+                    height: 150,
+                    width: double.infinity,
+                    child: PageView.builder(
+                      controller: _bannerCtrl,
+                      itemCount: _banners.length,
+                      onPageChanged: (i) => setState(() => _bannerIndex = i),
+                      itemBuilder: (context, i) {
+                        return Image.network(
+                          _banners[i],
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              color: Colors.grey.shade200,
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: Icon(Icons.broken_image, size: 40),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // ✅ little gradient for better text/dots visibility
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.center,
+                          colors: [
+                            Colors.black.withOpacity(0.45),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // dots indicator
+                  Positioned(
+                    bottom: 10,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_banners.length, (i) {
+                        final active = i == _bannerIndex;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          height: 7,
+                          width: active ? 18 : 7,
+                          decoration: BoxDecoration(
+                            color: active
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
                 ],
-              ),
-              child: TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
-                  hintText: "Search product name / cpu / gpu...",
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchText.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            setState(() => _searchText = "");
-                          },
-                          icon: const Icon(Icons.close),
-                        ),
-                  border: InputBorder.none,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                ),
-                onChanged: (v) => setState(() => _searchText = v),
               ),
             ),
           ),
         ),
       ),
       body: FutureBuilder<List<Product>>(
-        future: ApiService().getProduct(),
+        future: _productFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -147,10 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _selectedBrand = "All";
           }
 
-          final products = allProducts
-              .where(_matchBrand)
-              .where(_matchSearch)
-              .toList();
+          final products = allProducts.where(_matchBrand).toList();
 
           return Column(
             children: [
@@ -158,8 +206,10 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(
                 height: 63,
                 child: ListView.separated(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   scrollDirection: Axis.horizontal,
                   itemCount: brands.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -172,7 +222,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(30),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: isSelected ? Colors.black : Colors.white,
                           borderRadius: BorderRadius.circular(30),
@@ -224,11 +276,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           itemCount: products.length,
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.72,
-                          ),
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.72,
+                              ),
                           itemBuilder: (context, index) {
                             final product = products[index];
 
@@ -251,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       blurRadius: 10,
                                       spreadRadius: 1,
                                       color: Colors.black.withOpacity(0.08),
-                                    )
+                                    ),
                                   ],
                                 ),
                                 child: Column(
@@ -268,21 +320,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) =>
                                               Container(
-                                            color: Colors.grey.shade200,
-                                            child: const Icon(Icons.broken_image,
-                                                size: 40),
-                                          ),
+                                                color: Colors.grey.shade200,
+                                                child: const Icon(
+                                                  Icons.broken_image,
+                                                  size: 40,
+                                                ),
+                                              ),
                                           loadingBuilder:
                                               (context, child, progress) {
-                                            if (progress == null) return child;
-                                            return Container(
-                                              color: Colors.grey.shade200,
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
-                                            );
-                                          },
+                                                if (progress == null)
+                                                  return child;
+                                                return Container(
+                                                  color: Colors.grey.shade200,
+                                                  child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
+                                                );
+                                              },
                                         ),
                                       ),
                                     ),
@@ -317,15 +372,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   "\$${(product.price ?? 0).toStringAsFixed(2)}",
                                                   style: const TextStyle(
                                                     fontSize: 16,
-                                                    fontWeight:
-                                                        FontWeight.bold,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
                                                 const Spacer(),
                                                 InkWell(
                                                   onTap: () {
-                                                    ScaffoldMessenger.of(context)
-                                                        .showSnackBar(
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
                                                           "${product.name ?? "Item"} added to cart ✅",
@@ -342,7 +397,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       color: Colors.black,
                                                       borderRadius:
                                                           BorderRadius.circular(
-                                                              12),
+                                                            12,
+                                                          ),
                                                     ),
                                                     child: const Icon(
                                                       Icons.add_shopping_cart,
